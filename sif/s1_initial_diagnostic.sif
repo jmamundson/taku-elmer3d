@@ -5,6 +5,7 @@
 ! 5. Issue with installation, Compute2DNodalGradient.F90?
 ! 6. Horizontal resolution vs vertical resolution
 ! 7. Running on Weertman sliding now; want Coulomb
+! 8. Meaning of Target Boundaries
 
 check keywords warn
 echo on
@@ -376,14 +377,15 @@ Boundary Condition 1
   Velocity 1 = Real 0.0
 End
 
-!Boundary Condition 2
-!  Name = "inflow"
-!  Mass Consistent Normals = Logical True
-!  Normal-Tangential Velocity = Logical True
-!  Velocity 1 = Real 200.0
-!End
-
 Boundary Condition 2
+  Target Boundaries = 2
+  Name = "inflow"
+  Mass Consistent Normals = Logical True
+  Normal-Tangential Velocity = Logical True
+  Velocity 1 = Real 200.0
+End
+
+Boundary Condition 3
   Name = "bedrock"
   Bottom Surface = Equals BedDEM   
   ComputeNormal = Logical True
@@ -437,7 +439,7 @@ Boundary Condition 2
   Mass Consistent Normals = Logical True
 End
 
-Boundary Condition 3
+Boundary Condition 4
   Name = "surface"
   Top Surface = Equals ZsDEM
 
