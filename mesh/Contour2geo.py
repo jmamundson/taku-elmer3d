@@ -223,7 +223,7 @@ def main(argv):
       lf=l0+lines[-1]-1              
       geo.write('Physical Curve({0}) = '.format(phy)+r'{'+'{0}:{1}'.format(l0,lf)+r'};'+' \n')
     
-      geo.write('Physical Surface(1) = {1}; \n')
+      geo.write('Physical Surface(2) = {1}; \n')
 
    geo.close()
 

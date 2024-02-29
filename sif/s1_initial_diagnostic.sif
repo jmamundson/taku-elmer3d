@@ -27,9 +27,9 @@ Simulation
   Coordinate System  =  Cartesian 3D 
   Simulation Type = Steady        
 
-  Extruded Mesh Levels = Integer 10 !#EM ! make vertical resolution finer than horizontal resolution?
-  !Preserve Edges = Logical True
-  Preserve Baseline = Logical True ! saves outline of the domain, useful for GlaDS
+  Extruded Mesh Levels = Integer #EM ! make vertical resolution finer than horizontal resolution?
+  ! Preserve Edges = Logical True ! saves outline of the domain, useful for GlaDS
+  ! Preserve Baseline = Logical True ! saves outline of the domain, useful for GlaDS
 
   Steady State Min Iterations = 1
   Steady State Max Iterations = 1
@@ -54,6 +54,7 @@ End
 Body 2
   Name = "surface"
   Equation = 2
+  Body Force = 2
   Material = 1
 End
 
@@ -72,6 +73,11 @@ Body Force 1
   Flow BodyForce 3 = Real #-gravity 
 End
 
+Body Force 2
+! surface slope norm
+  slope = Variable "surfGrad 1", "surfGrad 2"
+    REAL LUA "math.sqrt(tx[0]*tx[0]+tx[1]*tx[1])*180/3.14" ! slope is in degrees
+End
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 Material 1
@@ -199,12 +205,12 @@ Solver 2
 
   Displacement Mode = Logical False
   Correct Surface = Logical True
-  Minimum Height = Real 10.0
+  Minimum Height = Real 1.0
 End
+
 
 Solver 3
   Equation = "NormalVector"
-  Exec Solver = "Never" ! "Before Simulation"
   Procedure = "ElmerIceSolvers" "ComputeNormalSolver"
 
   Variable = String "Normal Vector"
@@ -214,17 +220,18 @@ Solver 3
   Optimize Bandwidth = Logical False
 End
 
+
 Solver 4
   Equation = "HeightDepth"
-  Exec Solver = "Never"
   Procedure = "StructuredProjectToPlane" "StructuredProjectToPlane"
   Active Coordinate = Integer 3
   Operator 1 = Thickness
 End
 
+
 Solver 5
   Equation = "Surface Slope"
-  Exec Solver = "Never"
+  Exec Solver = "After Simulation"
   Procedure = "../solvers/Compute2DNodalGradient" "Compute2DNodalGradient"
   Variable = -dofs 2 "surfGrad"
   Variable Name = String "ZsDEM"
@@ -232,10 +239,11 @@ Solver 5
   Exported Variable 1 = -dofs 1 "slope"
 End
 
+
 Solver 6
   Equation = "Stokes-Vec"
   Procedure = "IncompressibleNSVec" "IncompressibleNSSolver"
-  Exec Solver = "Never"
+  ! Exec Solver = "Never"
   
   Stokes Flow = Logical True
 
@@ -288,12 +296,12 @@ Solver 6
 
   Exported Variable 1 = -dofs 1 "dSdt" 
   Exported Variable 2 = -dofs 1 "dS" 
-
 End
+
 
 Solver 7
   Equation = "Deviatoric Stress"
-  Exec Solver = "Never" !After Timestep"
+  Exec Solver = "After Timestep"
   Procedure = "ElmerIceSolvers" "ComputeDevStress"          
   Variable = -nooutput "Sij"
   Variable DOFs = 1
@@ -312,9 +320,10 @@ Solver 7
   Linear System Residual Output = 1
 End
 
+
 Solver 8
   Equation = "Strain Rate"
-  Exec Solver = "Never" !"After Timestep"
+  Exec Solver = "After Timestep"
   Procedure = "ElmerIceSolvers" "ComputeStrainRate"
 ! this is just a dummy, hence no output is needed
 !-----------------------------------------------------------------------  
@@ -347,37 +356,33 @@ End
 
 Equation 2
   Active Solvers(1) = 5
+  Flow Solution Name = String "Flow Solution"
+  Convection = String Computed
 End
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-Boundary Condition 1
-  Name = "outline"
-  Target Boundaries = 1
-End
+! Boundary Condition 1
+!  Name = "outline"
+!  Target Boundaries = 1
+! End
 
-Boundary Condition 2
+Boundary Condition 1
+  Target Boundaries = 1
   Name = "sides"
   Mass Consistent Normals = Logical True
   Normal-Tangential Velocity = Logical True
   Velocity 1 = Real 0.0
 End
 
-Boundary Condition 3
-  Name = "other sides"
-  Mass Consistent Normals = Logical True
-  Normal-Tangential Velocity = Logical True
-  Velocity 1 = Real 0.0
-End
+!Boundary Condition 2
+!  Name = "inflow"
+!  Mass Consistent Normals = Logical True
+!  Normal-Tangential Velocity = Logical True
+!  Velocity 1 = Real 200.0
+!End
 
-Boundary Condition 4
-  Name = "sides inflow boundary"
-  Mass Consistent Normals = Logical True
-  Normal-Tangential Velocity = Logical True
-  Velocity 1 = Real 200.0
-End
-
-Boundary Condition 5
+Boundary Condition 2
   Name = "bedrock"
   Bottom Surface = Equals BedDEM   
   ComputeNormal = Logical True
@@ -431,7 +436,7 @@ Boundary Condition 5
   Mass Consistent Normals = Logical True
 End
 
-Boundary Condition 6
+Boundary Condition 3
   Name = "surface"
   Top Surface = Equals ZsDEM
 
