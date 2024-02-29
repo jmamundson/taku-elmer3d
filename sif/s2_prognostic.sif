@@ -9,7 +9,7 @@ $Step = "step2"
 include "../parameters/Physical_Parameters.IN"
 
 Header
-  Mesh DB "../mesh" "mendenhall"
+  Mesh DB "../mesh" "taku"
   Results Directory "../results"
 End
 
@@ -22,13 +22,11 @@ Simulation
   Coordinate System  =  Cartesian 3D 
   Simulation Type = Transient     
 
-  Extruded Mesh Levels = Integer 10 !#EM ! make vertical resolution finer than horizontal resolution?
-  !Preserve Edges = Logical True
-  Preserve Baseline = Logical True ! saves outline of the domain, useful for GlaDS
+  Extruded Mesh Levels = Integer #EM ! make vertical resolution finer than horizontal resolution?
 
   Timestepping Method = "bdf"
   BDF Order = 1
-  TimeStep intervals = 500
+  TimeStep intervals = 50
   Timestep Sizes = Real 0.1 ! in years
   Output Intervals = 1 
 
@@ -189,6 +187,7 @@ Solver 2
   
 End
 
+
 Solver 3
   Equation = "NormalVector"
   Procedure = "ElmerIceSolvers" "ComputeNormalSolver"
@@ -199,6 +198,7 @@ Solver 3
   ComputeAll = Logical False
   Optimize Bandwidth = Logical False
 End
+
 
 Solver 4
   Equation = "HeightDepth"
@@ -216,6 +216,7 @@ Solver 5
   Exported Variable 1 = -dofs 1 "slope"
   Exported Variable 2 = -dofs 1 "balanceRate"
 End
+
 
 Solver 6
   Equation = "Stokes-Vec"
@@ -273,8 +274,8 @@ Solver 6
 
   Exported Variable 1 = -dofs 1 "dSdt" 
   Exported Variable 2 = -dofs 1 "dS" 
-
 End
+
 
 Solver 7
   Equation = "Deviatoric Stress"
@@ -296,6 +297,7 @@ Solver 7
   Linear System Preconditioning = "ILU0"
   Linear System Residual Output = 1
 End
+
 
 Solver 8
   Equation = "Strain Rate"
@@ -338,16 +340,25 @@ End
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-Boundary Condition 1
-  Name = "outline"
-  Target Boundaries = 1
-End
+! Boundary Condition 1
+!  Name = "outline"
+!  Target Boundaries = 1
+! End
 
-Boundary Condition 2
+Boundary Condition 1
+  Target Boundaries = 1
   Name = "sides"
   Mass Consistent Normals = Logical True
   Normal-Tangential Velocity = Logical True
   Velocity 1 = Real 0.0
+End
+
+Boundary Condition 2
+  Target Boundaries = 2
+  Name = "inflow"
+  Mass Consistent Normals = Logical True
+  Normal-Tangential Velocity = Logical True
+  Velocity 1 = Real 200.0
 End
 
 Boundary Condition 3
