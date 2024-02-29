@@ -4,6 +4,7 @@
 ! 4. Why four boundary conditions?
 ! 5. Issue with installation, Compute2DNodalGradient.F90?
 ! 6. Horizontal resolution vs vertical resolution
+! 7. Running on Weertman sliding now; want Coulomb
 
 check keywords warn
 echo on
