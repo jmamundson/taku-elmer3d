@@ -3,10 +3,10 @@
 # 2. Warps and crops the merged DEM.
 # 3. Fills a few DEM holes at high elevation.
 
-xmin=544975
-xmax=560275
-ymin=6473575
-ymax=6496875
+xmin=522500
+xmax=561000
+ymin=6473500
+ymax=6524500
 
 if test -f "taku_surface.tif"; then
     rm taku_surface.tif

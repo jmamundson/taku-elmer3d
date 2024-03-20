@@ -40,6 +40,8 @@ Simulation
   Post File = $Step".vtu"
   max output level = 3
 
+  Initialize Dirichlet Conditions = Logical False
+
   Dirty Finish = Logical True
 End
 
@@ -116,12 +118,12 @@ Solver 1
   ! Bedrock DEM
   Variable 1 = String "bedDEM"
   Variable 1 data file = File "../DEMs/taku_bed.dat"
-  Variable 1 x0 = Real 545000.0
-  Variable 1 y0 = Real 6473600.0
-  Variable 1 lx = Real 15250.0
-  Variable 1 ly = Real 23250.0
-  Variable 1 Nx = Integer 306
-  Variable 1 Ny = Integer 466
+  Variable 1 x0 = Real 522525.0 ! add 25 to coordinates in geotiff
+  Variable 1 y0 = Real 6473525.0 ! add 25 m to coordinates in geotiff
+  Variable 1 lx = Real 38450.0 ! subtract 50 m from edges in geotiff
+  Variable 1 ly = Real 50950.0 ! subtract 50 m from edges in geotiff
+  Variable 1 Nx = Integer 770
+  Variable 1 Ny = Integer 1020
   Variable 1 Invert = Logical False 
   Variable 1 Fill = Logical False 
   Variable 1 Position Tol = Real 1.0e-1
@@ -131,12 +133,12 @@ Solver 1
   ! Surface DEM
   Variable 2 = String "ZsDEM"
   Variable 2 data file = File "../DEMs/taku_surface.dat"
-  Variable 2 x0 = Real 545000.0
-  Variable 2 y0 = Real 6473600.0
-  Variable 2 lx = Real 15250.0
-  Variable 2 ly = Real 23250.0
-  Variable 2 Nx = Integer 306
-  Variable 2 Ny = Integer 466
+  Variable 2 x0 = Real 522525.0 ! add 25 to coordinates in geotiff
+  Variable 2 y0 = Real 6473525.0 ! add 25 m to coordinates in geotiff
+  Variable 2 lx = Real 38450.0 ! subtract 50 m from edges in geotiff
+  Variable 2 ly = Real 50950.0 ! subtract 50 m from edges in geotiff
+  Variable 2 Nx = Integer 770
+  Variable 2 Ny = Integer 1020
   Variable 2 Invert = Logical False 
   Variable 2 Fill = Logical False 
   Variable 2 Position Tol = Real 1.0e-1
@@ -228,6 +230,8 @@ Solver 4
   Procedure = "StructuredProjectToPlane" "StructuredProjectToPlane"
   Active Coordinate = Integer 3
   Operator 1 = Thickness
+  Operator 2 = Depth
+
 End
 
 
@@ -242,10 +246,11 @@ Solver 5
 End
 
 
+
 Solver 6
   Equation = "Stokes-Vec"
   Procedure = "IncompressibleNSVec" "IncompressibleNSSolver"
-  ! Exec Solver = "Never"
+  Exec Solver = "Never"
   
   Stokes Flow = Logical True
 
@@ -257,11 +262,11 @@ Solver 6
   !------------------------------
 
   Linear System Solver = Iterative
-  Linear System Iterative Method = BiCGStabl ! "GCR" !idrs
+  Linear System Iterative Method = idrs !BiCGStabl ! "GCR"
   Linear System Robust = True
-  Linear System Max Iterations  = 10000
-  Linear System Preconditioning = ILU0
-  ! Linear System Convergence Tolerance = 1.0e-08
+  Linear System Max Iterations  = 5000
+  Linear System Preconditioning = ILU2
+  Linear System Convergence Tolerance = 1.0e-08
   Linear System Residual Output = 100
 
   ! The following might be faster.
@@ -279,7 +284,7 @@ Solver 6
   Nonlinear System Reset Newton = Logical True
   ! make it safe abort if non-linear diverge
   Nonlinear System Abort Not Converged = Logical True
-  Nonlinear System Relaxation Factor = 1.0
+  ! Nonlinear System Relaxation Factor = 1.0
 
   ! Convergence on timelevel (not required here)
   !--------------------------------------------
@@ -297,13 +302,14 @@ Solver 6
   Constant-Viscosity Start = Logical True
 
   Exported Variable 1 = -dofs 1 "dSdt" 
-  Exported Variable 2 = -dofs 1 "dS" 
+  Exported Variable 2 = -dofs 1 "dS"
+  Exported Variable 3 = -dofs 1 "Thickness"
 End
 
 
 Solver 7
   Equation = "Deviatoric Stress"
-  Exec Solver = "After Timestep"
+  Exec Solver = "Never" !"After Timestep"
   Procedure = "ElmerIceSolvers" "ComputeDevStress"          
   Variable = -nooutput "Sij"
   Variable DOFs = 1
@@ -314,7 +320,7 @@ Solver 7
   Flow Solver Name = String "Flow Solution"
 
   Linear System Solver = "Iterative"
-  Linear System Iterative Method = "BiCGStab"
+  Linear System Iterative Method = "idrs" ! "BiCGStab"
   Linear System Max Iterations = 300
   Linear System Convergence Tolerance = 1.0E-09
   Linear System Abort Not Converged = True
@@ -325,7 +331,7 @@ End
 
 Solver 8
   Equation = "Strain Rate"
-  Exec Solver = "After Timestep"
+  Exec Solver = "Never" !"After Timestep"
   Procedure = "ElmerIceSolvers" "ComputeStrainRate"
 ! this is just a dummy, hence no output is needed
 !-----------------------------------------------------------------------  
@@ -342,7 +348,7 @@ Solver 8
   StrainRate Variable Name = String "StrainRate"
   
   Linear System Solver = "Iterative"
-  Linear System Iterative Method = "BiCGStab"
+  Linear System Iterative Method = "idrs" ! "BiCGStab"
   Linear System Max Iterations = 300
   Linear System Convergence Tolerance = 1.0E-09
   Linear System Abort Not Converged = True
@@ -369,77 +375,67 @@ End
 !  Target Boundaries = 1
 ! End
 
+
 Boundary Condition 1
   Target Boundaries = 1
-  Name = "sides"
+  Name = "edges"
   Mass Consistent Normals = Logical True
   Normal-Tangential Velocity = Logical True
   Velocity 1 = Real 0.0
+  !Velocity 2 = Real 0.0
+  !Velocity 3 = Real 0.0
 End
 
 Boundary Condition 2
-  Target Boundaries = 2
-  Name = "inflow"
-  Mass Consistent Normals = Logical True
-  Normal-Tangential Velocity = Logical True
-  Velocity 1 = Real 200.0
-End
-
-Boundary Condition 3
   Name = "bedrock"
   Bottom Surface = Equals BedDEM   
   ComputeNormal = Logical True
-
+  Mass Consistent Normals = Logical True
+  
   ! Velocity 1 = Real 0.0
   ! Velocity 2 = Real 0.0
   ! Velocity 3 = Real 0.0
 
-! --------- Coulomb Sliding
-
-  ! Normal-Tangential Velocity = Logical True
-  ! Flow Force BC = Logical True
-  
-  !! Water pressure given through the Stokes 'External Pressure' parameter 
-  !! (Negative = Compressive)
-  ! External Pressure = Real 0.0 !Equals Water Pressure
-
-  ! Velocity 1 = Real 0.0
-  
-  ! Slip Coefficient 2 =  Variable Coordinate 1
-  !   Real Procedure "ElmerIceUSF" "Friction_Coulomb"
-  ! Slip Coefficient 3 =  Variable Coordinate 1
-  !   Real Procedure "ElmerIceUSF" "Friction_Coulomb"
-    
-  !! Parameters needed for the Coulomb Friction Law
-  ! Friction Law Sliding Coefficient = Real #As ! larger = more slip 
-  ! Friction Law Post-Peak Exponent  = Real #q      !(q=1)
-  ! Friction Law Maximum Value = Real #C        !(C=1)
-  ! Friction Law PowerLaw Exponent = Real #m       !(m = n = 3 Glen's law) 
-  ! Friction Law Linear Velocity = Real 1e-4
-!--------------------------------------------
-
-
-! --------- Weertman sliding
+! --------- Need for Weertman or Coulomb sliding
   Normal-Tangential Velocity = Logical True
   Flow Force BC = Logical True
 
   Velocity 1 = Real 0.0
+
+! --------- Coulomb Sliding
+
+  !! Water pressure given through the Stokes 'External Pressure' parameter 
+  !! (Negative = Compressive)
+!  External Pressure = Real 0.0 !Equals Water Pressure
   
+!  Slip Coefficient 2 =  Variable Coordinate 1
+!    Real Procedure "ElmerIceUSF" "Friction_Coulomb"
+!  Slip Coefficient 3 =  Variable Coordinate 1
+!    Real Procedure "ElmerIceUSF" "Friction_Coulomb"
+    
+  !! Parameters needed for the Coulomb Friction Law
+!  Friction Law Sliding Coefficient = Real #As ! larger = more slip 
+!  Friction Law Post-Peak Exponent  = Real #q      !(q=1)
+!  Friction Law Maximum Value = Real #C        !(C=1)
+!  Friction Law PowerLaw Exponent = Real #m       !(m = n = 3 Glen's law) 
+!  Friction Law Linear Velocity = Real 1e-4
+!--------------------------------------------
+
+
+! --------- Weertman sliding
+  ! --------- Needed if using legacy Stokes ---------  
   ! Slip Coefficient 2 =  Variable Coordinate 1
   !   Real Procedure "ElmerIceUSF" "Sliding_Weertman"
   ! Slip Coefficient 3 =  Variable Coordinate 1
   !    Real Procedure "ElmerIceUSF" "Sliding_Weertman"
     
-  Weertman Friction Coefficient = Real 2.412579e-2        
-  Weertman Exponent = Real $1.0/3.0
-  Weertman Linear Velocity = Real 0.00001
+   Weertman Friction Coefficient = Real 2.5e-2        
+   Weertman Exponent = Real $1.0/3.0
+   Weertman Linear Velocity = Real 0.00001
 
-!--------------------------------------------
-
-  Mass Consistent Normals = Logical True
 End
 
-Boundary Condition 4
+Boundary Condition 3
   Name = "surface"
   Top Surface = Equals ZsDEM
 

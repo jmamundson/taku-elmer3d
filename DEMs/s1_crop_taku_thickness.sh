@@ -1,10 +1,10 @@
 #!/bin/bash
 # Converts thickness map to UTM zone 8N, crops to Mendenhall region, and assigns a minimum value of 1 m.
 
-xmin=544975
-xmax=560275
-ymin=6473575
-ymax=6496875
+xmin=522500
+xmax=561000
+ymin=6473500
+ymax=6524500
 
 if test -f "taku_thickness.tif"; then
     rm taku_thickness.tif

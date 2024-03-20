@@ -7,3 +7,5 @@ sif/taku/
 mesh/LANDSAT/*TIF
 mesh/GLIMS/
 *~
+*xml
+bed_data/

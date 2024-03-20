@@ -6,6 +6,6 @@ if test -f "taku_bed.tif"; then
 fi
 
 A=./taku_surface.tif
-B=./taku_thickness.tif
+B=./taku_thickness_smoothed.tif
 
 gdal_calc.py -A $A -B $B --outfile=./taku_bed.tif --calc="A-B"

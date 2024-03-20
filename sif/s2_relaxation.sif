@@ -1,4 +1,5 @@
 ! Current issues
+! balance rate not masked correctly if try to calculate slope during step 1?
 
 check keywords warn
 echo on
@@ -26,8 +27,8 @@ Simulation
 
   Timestepping Method = "bdf"
   BDF Order = 1
-  TimeStep intervals = 50
-  Timestep Sizes = Real 0.1 ! in years
+  TimeStep intervals = 100
+  Timestep Sizes = Real 0.01 !1.0/365.25 ! in years
   Output Intervals = 1 
 
   Steady State Min Iterations = 1
@@ -43,6 +44,8 @@ Simulation
   Restart Time = Real 0.0
   Restart Before Initial Conditions = Logical True
   max output level = 3
+
+  Initialize Dirichlet Conditions = Logical False
 
   Dirty Finish = Logical True
 End
@@ -98,17 +101,18 @@ Body Force 2
   unmaskedBalanceRate = Variable Zs
     Real LUA "(dBdz*(tx[0] - 1/(2*k)*math.log(1 + math.exp(2*k*(tx[0]-zthreshold)))) + Bsl)"
 
-  ! do not allow accumulation if the slope exceeds some angle (15 deg)
+  ! do not allow accumulation if the slope exceeds some angle (10 deg)
+  ! would like to add "and" balanceRate > 0, but not working
   Zs Accumulation Flux 3 = equals unmaskedBalanceRate  
-  Zs Accumulation Flux 3 Condition = Variable slope, unmaskedBalanceRate
-    Real LUA "(function() if (tx[0]>15 and tx[1]>0)  then return -1.0 else return 1.0 end end)()"
+  Zs Accumulation Flux 3 Condition = Variable slope !, unmaskedBalanceRate
+    Real LUA "(function() if tx[0]>10 then return -1.0 else return 1.0 end end)()"
+    !Real LUA "(function() if (tx[0]>5 and tx[1]>0)  then return -1.0 else return 1.0 end end)()"
 
   ! repeating the accumulation flux for visualization purposes
   balanceRate = equals unmaskedBalanceRate  
-  balanceRate Condition = Variable slope, unmaskedBalanceRate
-    Real LUA "(function() if (tx[0]>15 and tx[1]>0)  then return -1.0 else return 1.0 end end)()"
+  balanceRate Condition = Variable slope
+    Real LUA "(function() if tx[0]>10  then return -1.0 else return 1.0 end end)()"
 
-    
 End
 
 
@@ -151,7 +155,7 @@ Solver 1
 
   Displacement Mode = Logical False
   Correct Surface = Logical True
-  Minimum Height = Real 10.0
+  Minimum Height = Real 1.0
 End
 
 Solver 2
@@ -205,6 +209,7 @@ Solver 4
   Procedure = "StructuredProjectToPlane" "StructuredProjectToPlane"
   Active Coordinate = Integer 3
   Operator 1 = Thickness
+  Operator 2 = Depth
 End
 
 Solver 5
@@ -233,10 +238,10 @@ Solver 6
   !------------------------------
 
   Linear System Solver = Iterative
-  Linear System Iterative Method = BiCGStabl ! "GCR" !idrs
+  Linear System Iterative Method = idrs !BiCGStabl ! "GCR" !idrs
   Linear System Robust = True
   Linear System Max Iterations  = 10000
-  Linear System Preconditioning = ILU0
+  Linear System Preconditioning = ILU2
   ! Linear System Convergence Tolerance = 1.0e-08
   Linear System Residual Output = 100
 
@@ -255,7 +260,7 @@ Solver 6
   Nonlinear System Reset Newton = Logical True
   ! make it safe abort if non-linear diverge
   Nonlinear System Abort Not Converged = Logical True
-  Nonlinear System Relaxation Factor = 1.0
+  ! Nonlinear System Relaxation Factor = 0.75
 
   ! Convergence on timelevel (not required here)
   !--------------------------------------------
@@ -273,13 +278,14 @@ Solver 6
   Constant-Viscosity Start = Logical True
 
   Exported Variable 1 = -dofs 1 "dSdt" 
-  Exported Variable 2 = -dofs 1 "dS" 
+  Exported Variable 2 = -dofs 1 "dS"
+  Exported Variable 3 = -dofs 1 "Thickness"
 End
 
 
 Solver 7
   Equation = "Deviatoric Stress"
-  Exec Solver = "After Timestep"
+  Exec Solver = "Never" !"After Timestep"
   Procedure = "ElmerIceSolvers" "ComputeDevStress"          
   Variable = -nooutput "Sij"
   Variable DOFs = 1
@@ -301,7 +307,7 @@ End
 
 Solver 8
   Equation = "Strain Rate"
-  Exec Solver = "After Timestep"
+  Exec Solver = "Never" !"After Timestep"
   Procedure = "ElmerIceSolvers" "ComputeStrainRate"
 ! this is just a dummy, hence no output is needed
 !-----------------------------------------------------------------------  
@@ -345,23 +351,19 @@ End
 !  Target Boundaries = 1
 ! End
 
+
+
 Boundary Condition 1
   Target Boundaries = 1
-  Name = "sides"
+  Name = "inflow"
+  !External Pressure = Variable depth
+  !  Real LUA "-tx[0]*rhoi*gravity"
   Mass Consistent Normals = Logical True
   Normal-Tangential Velocity = Logical True
   Velocity 1 = Real 0.0
 End
 
 Boundary Condition 2
-  Target Boundaries = 2
-  Name = "inflow"
-  Mass Consistent Normals = Logical True
-  Normal-Tangential Velocity = Logical True
-  Velocity 1 = Real 200.0
-End
-
-Boundary Condition 3
   Name = "bedrock"
   Bottom Surface = Equals BedDEM   
   ComputeNormal = Logical True
@@ -372,26 +374,26 @@ Boundary Condition 3
 
 ! --------- Coulomb Sliding
 
-  ! Normal-Tangential Velocity = Logical True
-  ! Flow Force BC = Logical True
+!   Normal-Tangential Velocity = Logical True
+!   Flow Force BC = Logical True
   
   !! Water pressure given through the Stokes 'External Pressure' parameter 
   !! (Negative = Compressive)
-  ! External Pressure = Real 0.0 !Equals Water Pressure
+!   External Pressure = Real 0.0 !Equals Water Pressure
 
-  ! Velocity 1 = Real 0.0
+!   Velocity 1 = Real 0.0
   
-  ! Slip Coefficient 2 =  Variable Coordinate 1
-  !   Real Procedure "ElmerIceUSF" "Friction_Coulomb"
-  ! Slip Coefficient 3 =  Variable Coordinate 1
-  !   Real Procedure "ElmerIceUSF" "Friction_Coulomb"
+!   Slip Coefficient 2 =  Variable Coordinate 1
+!     Real Procedure "ElmerIceUSF" "Friction_Coulomb"
+!   Slip Coefficient 3 =  Variable Coordinate 1
+!     Real Procedure "ElmerIceUSF" "Friction_Coulomb"
     
-  !! Parameters needed for the Coulomb Friction Law
-  ! Friction Law Sliding Coefficient = Real #As ! larger = more slip 
-  ! Friction Law Post-Peak Exponent  = Real #q      !(q=1)
-  ! Friction Law Maximum Value = Real #C        !(C=1)
-  ! Friction Law PowerLaw Exponent = Real #m       !(m = n = 3 Glen's law) 
-  ! Friction Law Linear Velocity = Real 1e-4
+  ! Parameters needed for the Coulomb Friction Law
+!   Friction Law Sliding Coefficient = Real #As ! larger = more slip 
+!   Friction Law Post-Peak Exponent  = Real #q      !(q=1)
+!   Friction Law Maximum Value = Real #C        !(C=1)
+!   Friction Law PowerLaw Exponent = Real #m       !(m = n = 3 Glen's law) 
+!   Friction Law Linear Velocity = Real 1e-4
 !--------------------------------------------
 
 
@@ -406,8 +408,8 @@ Boundary Condition 3
   ! Slip Coefficient 3 =  Variable Coordinate 1
   !    Real Procedure "ElmerIceUSF" "Sliding_Weertman"
     
-  Weertman Friction Coefficient = Real 2.412579e-2        
-  Weertman Exponent = Real $1.0/3.0
+  Weertman Friction Coefficient = Real 2.5e-2 !2.412579e-2        
+  Weertman Exponent = Real #1.0/3.0
   Weertman Linear Velocity = Real 0.00001
 
 !--------------------------------------------
@@ -415,7 +417,7 @@ Boundary Condition 3
   Mass Consistent Normals = Logical True
 End
 
-Boundary Condition 4
+Boundary Condition 3
   Name = "surface"
   Body Id = 2
 
